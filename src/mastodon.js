@@ -30,13 +30,18 @@ export async function getPaginated(url, token, not_before) {
         remaining_calls = resp.headers.get('X-RateLimit-Remaining');
         items_batch = await resp.json();
         if (items_batch.length == 0) break;
-        items_batch.forEach(i => {
-            if (!not_before || i.created_at > not_before) {
-                items.push(i);
-            } else if (not_before && i.created_at < not_before) {
-                stop = true;
-            }
-        });
+	try {
+	    items_batch.forEach(i => {
+		if (!not_before || i.created_at > not_before) {
+		    items.push(i);
+		} else if (not_before && i.created_at < not_before) {
+		    stop = true;
+		}
+	    });
+	} catch {
+	    console.log("error while looping over items");
+	    console.log(items_batch);
+	}
         if (stop) break;
 
         var link = resp.headers.get('Link');
