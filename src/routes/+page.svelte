@@ -262,8 +262,8 @@ progress::-webkit-progress-value { background: var(--color-primary); }
 {#if $top_links}
     <p>Here are the latest most shared links from people you follow:</p>
     <ul>
-    {#each $top_links as link, i}
-        <li><a href={link.url}>{link.title}</a> ({link.linkers.length} {link.ppl})</li>
+    {#each $top_links as link}
+        <li><a href="{link.url}" target="_blank" rel="noreferrer">{link.title}</a> ({link.linkers.length} {link.ppl})</li>
     {/each}
     </ul>
 {:else}
