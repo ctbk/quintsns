@@ -1,6 +1,6 @@
 <script>
     import {client_id, client_secret, masto_instance, myself, token, top_links} from '../stores.js';
-    import {getPaginated} from '../mastodon.js';
+    import {extractLinks, getPaginated, getAccessCode} from '../mastodon.js';
     import {onMount} from 'svelte';
     // import "../../node_modules/chota/dist/chota.min.css"
 
@@ -10,42 +10,6 @@
     let followed_done = 0;
     let followed_todo = 0;
     let name_error;
-
-    function extractLinks(toot) {
-        let content;
-        let card;
-        let parsed_links = [];
-        const linker_acct = toot.account.acct;
-        const linker_name = toot.account.display_name;
-        const parser = new DOMParser();
-        if (toot.content) {
-            content = toot.content;
-            card = toot.card;
-
-        } else if (toot.reblog) {
-            content = toot.reblog.content;
-            card = toot.reblog.card;
-        }
-        card = card ? card : {};
-        if (content) {
-            const html = parser.parseFromString(content, 'text/html');
-            const a_tags = html.getElementsByTagName('a');
-            for (let i = 0; i < a_tags.length; i++) {
-                let a_tag = a_tags[i];
-                if (a_tag.classList.length) continue; // hacky: real links have no class in mastodon's toots
-                parsed_links.push({
-                    'linker_acct': linker_acct,
-                    'linker_name': linker_name,
-                    'url': a_tag.href,
-                    'title': a_tag.href === card.url ? card.title : undefined,
-                    'description': a_tag.href === card.url ? card.description : undefined,
-                    'image': card.image ? card.image : undefined,
-                    'provider': a_tag.href === card.url ? card.provider : undefined,
-                });
-            }
-        }
-        return parsed_links;
-    }
 
     function clean_masto_address() {
         name_error = '';
@@ -60,7 +24,7 @@
                 return true;
             }
         } catch {
-           console.log("Problems with the typed instance: " + dirty);
+            console.log("Problems with the typed instance: " + dirty);
         }
         name_error = "Please check that the instance name you typed is correct.";
         return false;
@@ -101,27 +65,11 @@
 
     async function checkLocationCode() {
         if ($token || !$masto_instance) return;
-
-        let turl = new URL($masto_instance + '/oauth/token');
         const curURL = new URL(window.location);
         if (curURL.searchParams.has('code')) {
             let code = curURL.searchParams.get('code');
-            let token_params = {
-                'client_id': $client_id,
-                'client_secret': $client_secret,
-                'redirect_uri': curURL.origin,
-                'grant_type': 'authorization_code',
-                'code': code,
-                'scope': 'read'
-            };
-            const options = {
-                'method': 'POST',
-                'body': JSON.stringify(token_params),
-                'headers': {'Content-Type': 'application/json'}
-            }
-            let create_token_resp = await fetch(turl, options);
-            let result = await create_token_resp.json();
-            $token = result['access_token'];
+            let redirect_uri = curURL.origin;
+            $token = await getAccessCode($masto_instance, $client_id, $client_secret, code, redirect_uri)
             await get_user_info();
             setTimeout(() => {
                 document.location.href = curURL.origin
@@ -144,30 +92,38 @@
 
     function calculateTopLinks(links) {
         let top = new Map();
+        let link_data;
         links.forEach(l => {
             if (top.has(l.url)) {
-                top.get(l.url).linkers.add(l.linker_acct);
-                if (l.title) {
-                    top.get(l.url).title = l.title
-                }
-                if (l.description) {
-                    top.get(l.url).description = l.description
-                }
-                if (l.provider) {
-                    top.get(l.url).provider = l.provider
-                }
-                if (l.image) {
-                    top.get(l.url).image = l.image
-                }
+                link_data = top.get(l.url)
             } else {
-                top.set(l.url, {
-                    linkers: new Set([l.linker_acct]),
-                    title: l.title,
-                    description: l.description,
-                    provider: l.provider,
-                    image: l.image
-                });
+                link_data = {
+                    linkers: new Set(),
+                    boosters: new Set(),
+                    tooters: new Set(),
+                    quotations: {}
+                }
             }
+            link_data.linkers.add(l.linker_acct)
+            if (l.action === 'boost') {
+                link_data.boosters.add(l.linker_acct)
+            } else if (l.action === 'toot') {
+                link_data.tooters.add(l.linker_acct)
+                link_data.quotations[l.linker_acct] = {toot_url: l.toot_url, toot_text: l.toot_text}
+            }
+            if (l.title) {
+                link_data.title = l.title
+            }
+            if (l.description) {
+                link_data.description = l.description
+            }
+            if (l.provider) {
+                link_data.provider = l.provider
+            }
+            if (l.image) {
+                link_data.image = l.image
+            }
+            top.set(l.url, link_data)
         });
         return [...top].sort((a, b) => {
             return b[1].linkers.size - a[1].linkers.size
@@ -188,14 +144,15 @@
 
     async function getToots(user_id, not_before) {
         let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses');
-        url.searchParams.set('limit', 100);
+        url.searchParams.set('limit', "100");
         return await getPaginated(url, $token, not_before);
     }
 
     async function fillTopLinks() {
+        followed_done = 0;
         processing = true;
         let followed = await getFollowed();
-        console.log(followed);
+        // console.log(followed);
         let d = new Date();
         let not_before = new Date();
         not_before.setHours(not_before.getHours() - hours_back);
@@ -241,7 +198,10 @@
                 image: ld.image ? `<img src="${ld.image}" alt="preview image"/>` : '',
                 title: ld.title ? trunc_str(ld.title) : trunc_str(url, 60),
                 ppl: ld.linkers.size > 1 ? 'people' : 'person',
-                linkers: [...ld.linkers]
+                linkers: [...ld.linkers],
+                tooters: [...ld.tooters],
+                boosters: [...ld.boosters],
+                quotations: ld.quotations,
             });
         }
         return prepared_links;
@@ -263,8 +223,20 @@
         <p>Here are the latest most shared links from people you follow:</p>
         <ul class="top_links">
             {#each $top_links as link, i}
-                <li><a href={link.url} target="_blank" rel="noreferrer">{@html link.image}{link.title}</a>
-                    ({link.linkers.length} {link.ppl})
+                <li><a class="top_link" href={link.url} target="_blank" rel="noreferrer">
+                    {#if link.image}
+                        <div class="img_container">{@html link.image}</div>
+                    {/if}
+                    {link.title}</a>
+                    ({link.linkers.length} {link.ppl})<br />
+                    {#if link.quotations && link.tooters && link.tooters.length>0}
+                        <ul>
+                            {#each link.tooters as t}
+                                <li><a href="{link.quotations[t].toot_url}">{t}: "{link.quotations[t].toot_text}"</a></li>
+                            {/each}
+                        </ul>
+                        (tooted:{#each link.tooters as t}&nbsp;{t}{/each}){/if}
+                    {#if link.boosters && link.boosters.length>0}(boosted:{#each link.boosters as b}&nbsp;{b}{/each}){/if}
                 </li>
             {/each}
         </ul>
