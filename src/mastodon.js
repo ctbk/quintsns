@@ -67,9 +67,9 @@ export async function getPaginated(url, token, not_before) {
 }
 function extractPureText(htmlText) {
     let e = document.createElement('span')
-    e.innerHTML = htmlText;
+    e.innerHTML = htmlText.replace(/<br ?\/?>/ig, ' ');
     let txt = e.innerText || e.textContent;
-    return txt.replace(/@[^ ]+/g, '').trim()
+    return txt.replace(/@[^ ]+/g, '').replace(/https?:\/\/[^ ]/ig, '').trim()
 }
 export function extractLinks(toot) {
     let content;
@@ -103,7 +103,8 @@ export function extractLinks(toot) {
                 title: a_tag.href === card.url ? card.title : undefined,
                 description: a_tag.href === card.url ? card.description : undefined,
                 image: card.image ? card.image : undefined,
-                provider: a_tag.href === card.url ? card.provider : undefined,
+                provider_name: a_tag.href === card.url ? card.provider_name : undefined,
+                provider_url: a_tag.href === card.url ? card.provider_url : undefined,
                 toot_text: action === 'toot' ? extractPureText(content) : undefined,
                 toot_url: toot.url
             });

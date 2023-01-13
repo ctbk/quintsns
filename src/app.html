@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+          integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
     <link rel="icon" href="%sveltekit.assets%/favicon.png"/>
     <link rel="stylesheet" href="%sveltekit.assets%/chota.min.css"/>
 
@@ -16,7 +18,6 @@
             --color-darkGrey: #555;
             --color-primary: #bcbdff;
             --grid-maxWidth: 100rem;
-
         }
 
         footer {
@@ -25,29 +26,127 @@
 
         ul.top_links {
             list-style: none;
-            border: 1px solid var(--color-darkGrey);
-            border-radius: 4px;
             padding: 0;
         }
 
-        ul.top_links .img_container {
-            flex: 0 0 80px;
+        ul.top_links > li {
+            background-color: var(--bg-secondary-color);
         }
 
-        ul.top_links a.top_link {
+        ul.top_links > li a {
             display: flex;
+        }
+
+        ul.top_links > li a:hover {
+            background-color: #333;
+        }
+
+        div.link_image {
+            flex: 0 0 80px;
+            position: relative;
+            margin-right: 4px;
+        }
+
+        div.link_image img {
+            border-top-left-radius: 8px;
+        }
+
+        div.link_text {
+            flex: 1 1 auto;
+            overflow: hidden;
             text-overflow: ellipsis;
-
-        }
-        ul.top_links li {
-            border-bottom: 1px solid var(--color-darkGrey);
-            padding-left: 4px;
         }
 
-        ul.top_links img {
-            width: 100%;
-            height: 100%;
+        div.link_text .link_title {
+            white-space: nowrap
+        }
+
+        div.link_text .link_description {
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            color: var(--font-color);
+            overflow: hidden
+        }
+
+        ul.top_links > li {
+            border: 1px solid var(--color-darkGrey);
+            border-radius: 8px;
+            margin-bottom: 1em;
+        }
+
+        .shared_bar, div.link_details {
+            vertical-align: center;
+        }
+        span.quote, .shared_bar i, .shared_bar img {
+            margin-top:auto;
+            margin-bottom:auto;
+            padding-left:4px;
+        }
+
+        a.shared_bar:hover {
+            background-color: #444;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .shared_bar {padding-bottom: 4px; padding-top: 4px}
+
+        ul.top_links > li a:hover div.shares {
+            background-color: var(--bg-secondary-color);
+        }
+
+        div.shares {
+            border: 1px solid var(--color-darkGrey);
+            position: relative;
+            width: 2em;
+            height: 2em;
+            text-align: center;
+            vertical-align: middle;
+            color: var(--font-color);
+            border-radius: 4px;
+        }
+
+        div.shares, div.link_details {
+            margin-left: 8px
+        }
+
+        img.linker_avatar {
+            height: 2em;
             border-radius: 2px;
+            margin-left: 4px;
+        }
+
+        div.link_details {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .shared_bar i, div.collapse i {
+            font-size: 2em;
+            color: var(--color-darkGrey);
+            margin-left:4px;
+        }
+
+        div.link_details i {
+            color: var(--color-darkGrey);
+            font-size: 2em;
+        }
+        div.link_details .toots {
+            vertical-align: top;
+        }
+        div.link_details .toots {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .quote {
+            position: relative;
+            font-size: 80%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            color: var(--font-color);
+            line-height: 2em;
         }
 
         progress {

@@ -117,8 +117,9 @@
             if (l.description) {
                 link_data.description = l.description
             }
-            if (l.provider) {
-                link_data.provider = l.provider
+            if (l.provider_name) {
+                link_data.provider_name = l.provider_name
+                link_data.provider_url = l.provider_url
             }
             if (l.image) {
                 link_data.image = l.image
@@ -148,10 +149,26 @@
         return await getPaginated(url, $token, not_before);
     }
 
+    function cleanDisplayName(name) {
+        return name.replace(/:[^:]+:/g, '')
+    }
+
+    function buildFollowedInfo(followed) {
+        let fi = {};
+        followed.forEach(fl => {
+            fi[fl.acct] = {
+                avatar_url: fl.avatar,
+                display_name: cleanDisplayName(fl.display_name)
+            }
+        });
+        return fi
+    }
+
     async function fillTopLinks() {
         followed_done = 0;
         processing = true;
         let followed = await getFollowed();
+        let followed_info = buildFollowedInfo(followed);
         // console.log(followed);
         let d = new Date();
         let not_before = new Date();
@@ -165,7 +182,7 @@
             let parsedDate = new Date();
             parsedDate.setTime(Date.parse(f.last_status_at));
             return parsedDate >= d;
-        });
+        }); /* ### */
         followed_todo = fresh_followed.length;
         let found_links = [];
         for (let i = 0; i < fresh_followed.length; i++) {
@@ -179,7 +196,7 @@
             followed_done = i + 1;
         }
         processing = false;
-        $top_links = prepare_links(calculateTopLinks(found_links).slice(0, 15));
+        $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info);
     }
 
     function trunc_str(s, max_length = 120) {
@@ -188,23 +205,51 @@
         return s.slice(0, max_length - 1).trim() + abbr;
     }
 
-    function prepare_links(links) {
+    function expandFollowers(followers, info) {
+        let expanded = [];
+        followers.forEach(f => {
+            expanded.push({
+                acct: f,
+                avatar_url: info[f].avatar_url,
+                display_name: info[f].display_name,
+            })
+        })
+        return expanded
+    }
+
+    function prepareLinks(links, followed_info) {
         let prepared_links = [];
         for (let i = 0; i < links.length; i++) {
             let url = links[i][0];
             let ld = links[i][1];
+
             prepared_links.push({
                 url: url,
-                image: ld.image ? `<img src="${ld.image}" alt="preview image"/>` : '',
-                title: ld.title ? trunc_str(ld.title) : trunc_str(url, 60),
+                image: ld.image ? ld.image : '',
+                title: ld.title ? trunc_str(ld.title) : trunc_str(url, 120),
                 ppl: ld.linkers.size > 1 ? 'people' : 'person',
-                linkers: [...ld.linkers],
-                tooters: [...ld.tooters],
-                boosters: [...ld.boosters],
+                description: ld.description ? ld.description : '',
+                provider_name: ld.provider_name ? ld.provider_name : '',
+                provider_url: ld.provider_url ? ld.provider_url : '',
+                linkers: expandFollowers(ld.linkers, followed_info),
+                tooters: expandFollowers(ld.tooters, followed_info),
+                boosters: expandFollowers(ld.boosters, followed_info),
                 quotations: ld.quotations,
+                expanded: false,
             });
         }
         return prepared_links;
+    }
+
+    function toggleLinkDetails(i) {
+        $top_links[i].expanded = !$top_links[i].expanded;
+        console.log(i)
+    }
+
+    function collapse() {
+        for (let i = 0; i < $top_links.length; i++) {
+            $top_links[i].expanded = false;
+        }
     }
 </script>
 
@@ -213,6 +258,7 @@
     <p class="grouped">
         <button on:click={fillTopLinks} class="button primary">Get/refresh the top links</button>
         <button on:click={doLogout} class="button outline dark">Logout</button>
+        <button on:click={collapse} class="button outline dark">collapse</button>
     </p>
     {#if processing}
         <p>
@@ -220,23 +266,52 @@
             Links found: {links_found}</p>
     {/if}
     {#if $top_links}
-        <p>Here are the latest most shared links from people you follow:</p>
+        <p>These are the latest most shared links from people you follow:</p>
         <ul class="top_links">
-            {#each $top_links as link, i}
-                <li><a class="top_link" href={link.url} target="_blank" rel="noreferrer">
-                    {#if link.image}
-                        <div class="img_container">{@html link.image}</div>
-                    {/if}
-                    {link.title}</a>
-                    ({link.linkers.length} {link.ppl})<br />
-                    {#if link.quotations && link.tooters && link.tooters.length>0}
-                        <ul>
-                            {#each link.tooters as t}
-                                <li><a href="{link.quotations[t].toot_url}">{t}: "{link.quotations[t].toot_text}"</a></li>
+            {#each $top_links as link, tli}
+                <li>
+                    <a href="{link.url}" target="_blank" rel="noreferrer" title="{link.description||link.title}">
+                        <div class="link_image">
+                            {#if link.image}<img src="{link.image}" alt="">{/if}
+                        </div>
+                        <div class="link_text">
+                            <strong class="link_title">{link.title}</strong>
+                            <span class="link_description">{link.description}</span>
+                        </div>
+                    </a>
+                    {#if link.expanded}
+                        <div><a title="Click to collapse" class="shared_bar" href="?collapse" on:click|preventDefault={() => {toggleLinkDetails(tli)}}><i class="fa fa-compress"></i></a></div>
+                        {#each link.tooters as linker, i}
+                        <a class="shared_bar" href="{link.quotations[linker.acct].toot_url}" target="_blank" rel="noreferrer" title="{link.quotations[linker.acct].toot_text}">
+                            <i class="fa fa-comment-o" aria-hidden="true"></i>
+                            <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
+                                 src="{linker.avatar_url}" />
+                            <span class="quote"> &ldquo;{link.quotations[linker.acct].toot_text}&rdquo;</span>
+                        </a>
+                        {/each}
+                        {#if link.boosters.length>0}
+                        <span class="shared_bar">
+                        <i class="fa fa-retweet" aria-hidden="true"></i>
+                        {#each link.boosters as linker}
+                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
+                                     src="{linker.avatar_url}"/>
+                        {/each}
+                        </span>
+                        {/if}
+                    {:else}
+                        <a title="Click for more details" class="shared_bar" href="?expand" on:click|preventDefault={() => {toggleLinkDetails(tli)}}>
+                            {#each link.tooters as linker, j}
+                                {#if j===0}<i class="fa fa-comment-o" aria-hidden="true"></i>{/if}
+                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
+                                     src="{linker.avatar_url}"/>
                             {/each}
-                        </ul>
-                        (tooted:{#each link.tooters as t}&nbsp;{t}{/each}){/if}
-                    {#if link.boosters && link.boosters.length>0}(boosted:{#each link.boosters as b}&nbsp;{b}{/each}){/if}
+                            {#each link.boosters as linker, j}
+                                {#if j===0}<i class="fa fa-retweet" aria-hidden="true"></i>{/if}
+                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
+                                     src="{linker.avatar_url}"/>
+                            {/each}
+                        </a>
+                    {/if}
                 </li>
             {/each}
         </ul>
