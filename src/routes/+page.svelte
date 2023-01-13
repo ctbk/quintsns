@@ -237,7 +237,7 @@
             prepared_links.push({
                 url: url,
                 image: ld.image ? ld.image : '',
-                title: ld.title ? trunc_str(ld.title) : trunc_str(url, 120),
+                title: ld.title ? trunc_str(ld.title) : trunc_str(url, 80),
                 ppl: ld.linkers.size > 1 ? 'people' : 'person',
                 description: ld.description ? ld.description : '',
                 provider_name: ld.provider_name ? ld.provider_name : '',
@@ -254,7 +254,6 @@
 
     function toggleLinkDetails(i) {
         $top_links[i].expanded = !$top_links[i].expanded;
-        console.log(i)
     }
 </script>
 
@@ -278,7 +277,7 @@
                             {#if link.image}<img src="{link.image}" alt="">{/if}
                         </div>
                         <div class="link_text">
-                            <strong class="link_title">{link.title}</strong>
+                            <strong class="link_title">{link.title}</strong><br />
                             <span class="link_description">{link.description}</span>
                         </div>
                     </a>
