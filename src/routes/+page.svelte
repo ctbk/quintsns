@@ -279,6 +279,9 @@
                         <div class="link_text">
                             <strong class="link_title">{link.title}</strong><br />
                             <span class="link_description">{link.description}</span>
+                            {#if link.provider_name}
+                                <span class="provider_name">({link.provider_name})</span>
+                            {/if}
                         </div>
                     </a>
                     {#if link.expanded}
