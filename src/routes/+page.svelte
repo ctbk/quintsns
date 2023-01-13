@@ -1,5 +1,5 @@
 <script>
-    import {client_id, client_secret, masto_instance, myself, token, top_links} from '../stores.js';
+    import {client_id, client_secret, masto_instance, myself, token, top_links, quint_version} from '../stores.js';
     import {extractLinks, getPaginated, getAccessCode} from '../mastodon.js';
     import {onMount} from 'svelte';
     // import "../../node_modules/chota/dist/chota.min.css"
@@ -10,6 +10,7 @@
     let followed_done = 0;
     let followed_todo = 0;
     let name_error;
+    const cur_version = 1;
 
     function clean_masto_address() {
         name_error = '';
@@ -86,7 +87,17 @@
         $top_links = '';
     }
 
+    function checkVersion() {
+        let found_version = $quint_version;
+        if (!found_version || found_version !== cur_version) {
+            // do compatibility thing
+            $top_links = undefined;
+            $quint_version = cur_version;
+        }
+    }
+
     onMount(async () => {
+        checkVersion();
         await checkLocationCode();
     });
 
@@ -245,20 +256,12 @@
         $top_links[i].expanded = !$top_links[i].expanded;
         console.log(i)
     }
-
-    function collapse() {
-        for (let i = 0; i < $top_links.length; i++) {
-            $top_links[i].expanded = false;
-        }
-    }
 </script>
 
-<h1>Quintessence</h1>
 {#if $token}
     <p class="grouped">
         <button on:click={fillTopLinks} class="button primary">Get/refresh the top links</button>
         <button on:click={doLogout} class="button outline dark">Logout</button>
-        <button on:click={collapse} class="button outline dark">collapse</button>
     </p>
     {#if processing}
         <p>
@@ -280,33 +283,37 @@
                         </div>
                     </a>
                     {#if link.expanded}
-                        <div><a title="Click to collapse" class="shared_bar" href="?collapse" on:click|preventDefault={() => {toggleLinkDetails(tli)}}><i class="fa fa-compress"></i></a></div>
+                        <div><a title="Click to collapse" class="shared_bar" href="?collapse"
+                                on:click|preventDefault={() => {toggleLinkDetails(tli)}}><i class="fa fa-compress"></i></a>
+                        </div>
                         {#each link.tooters as linker, i}
-                        <a class="shared_bar" href="{link.quotations[linker.acct].toot_url}" target="_blank" rel="noreferrer" title="{link.quotations[linker.acct].toot_text}">
-                            <i class="fa fa-comment-o" aria-hidden="true"></i>
-                            <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
-                                 src="{linker.avatar_url}" />
-                            <span class="quote"> &ldquo;{link.quotations[linker.acct].toot_text}&rdquo;</span>
-                        </a>
+                            <a class="shared_bar" href="{link.quotations[linker.acct].toot_url}" target="_blank"
+                               rel="noreferrer" title="{link.quotations[linker.acct].toot_text}">
+                                <i class="fa fa-comment-o" aria-hidden="true"></i>
+                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
+                                     src="{linker.avatar_url}"/>
+                                <span class="quote"> &ldquo;{link.quotations[linker.acct].toot_text}&rdquo;</span>
+                            </a>
                         {/each}
-                        {#if link.boosters.length>0}
+                        {#if link.boosters.length > 0}
                         <span class="shared_bar">
                         <i class="fa fa-retweet" aria-hidden="true"></i>
-                        {#each link.boosters as linker}
+                            {#each link.boosters as linker}
                                 <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
                                      src="{linker.avatar_url}"/>
                         {/each}
                         </span>
                         {/if}
                     {:else}
-                        <a title="Click for more details" class="shared_bar" href="?expand" on:click|preventDefault={() => {toggleLinkDetails(tli)}}>
+                        <a title="Click for more details" class="shared_bar" href="?expand"
+                           on:click|preventDefault={() => {toggleLinkDetails(tli)}}>
                             {#each link.tooters as linker, j}
-                                {#if j===0}<i class="fa fa-comment-o" aria-hidden="true"></i>{/if}
+                                {#if j === 0}<i class="fa fa-comment-o" aria-hidden="true"></i>{/if}
                                 <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
                                      src="{linker.avatar_url}"/>
                             {/each}
                             {#each link.boosters as linker, j}
-                                {#if j===0}<i class="fa fa-retweet" aria-hidden="true"></i>{/if}
+                                {#if j === 0}<i class="fa fa-retweet" aria-hidden="true"></i>{/if}
                                 <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
                                      src="{linker.avatar_url}"/>
                             {/each}
