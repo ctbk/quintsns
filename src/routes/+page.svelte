@@ -91,13 +91,13 @@
         let found_version = $quint_version;
         if (!found_version || found_version !== cur_version) {
             // do compatibility thing
-            $top_links = undefined;
-            $quint_version = cur_version;
+            $top_links = ''
+            $quint_version = cur_version
         }
     }
+    checkVersion();
 
     onMount(async () => {
-        checkVersion();
         await checkLocationCode();
     });
 
