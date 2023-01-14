@@ -73,7 +73,7 @@
             $token = await getAccessCode($masto_instance, $client_id, $client_secret, code, redirect_uri)
             await get_user_info();
             setTimeout(() => {
-                document.location.href = curURL.origin
+                //document.location.href = curURL.origin
             }, 200);
 
         }

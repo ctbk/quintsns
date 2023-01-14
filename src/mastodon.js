@@ -129,5 +129,6 @@ export async function getAccessCode(masto_instance, client_id, client_secret, co
         'headers': {'Content-Type': 'application/json'}
     }
     let create_token_resp = await fetch(turl, options);
-    return await await create_token_resp.json()['access_token'];
+    let tk = await create_token_resp.json();
+    return tk['access_token']
 }
