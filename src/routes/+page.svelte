@@ -1,8 +1,9 @@
 <script>
     import {client_id, client_secret, masto_instance, myself, token, top_links, quint_version} from '../stores.js';
+    import {active_tab} from '../stores.js';
     import {extractLinks, getPaginated, getAccessCode} from '../mastodon.js';
     import {onMount} from 'svelte';
-    // import "../../node_modules/chota/dist/chota.min.css"
+    import TopLinks from "./TopLinks.svelte";
 
     let hours_back = 24;
     let links_found = 0;
@@ -95,7 +96,6 @@
             $quint_version = cur_version
         }
     }
-    checkVersion();
 
     onMount(async () => {
         await checkLocationCode();
@@ -174,8 +174,62 @@
         });
         return fi
     }
+    function toot_instance_url(toot) {
+        let author_account;
+        let toot_id;
+        if (toot.reblog) {
+            author_account = toot.reblog.account;
+            toot_id = toot.reblog.id;
+        } else {
+            author_account = toot.account;
+            toot_id = toot.reblog.id;
+        }
+        return $masto_instance + '/@' + author_account.acct + '/' + toot_id
+    }
+    function geometricMean(arr) {
+        let sum = 0;
+        for (let i = 0; i < arr.length; i++)
+            sum = sum + Math.log(arr[i]);
+        sum = sum / arr.length;
+        return Math.exp(sum);
+    }
 
-    async function fillTopLinks() {
+    function geometricMean2(arr) {
+        let product = 1;
+        for (let i = 0; i < arr.length; i++)
+            product = product * arr[i];
+        return Math.pow(product, 1 / arr.length);
+    }
+    function tootScore(toot) {
+        let author_followers;
+        let reblogs;
+        let favs;
+        if (toot.reblog) {
+            author_followers = toot.reblog.account.followers_count;
+            reblogs = toot.reblog.reblogs_count
+            favs = toot.reblog.favourites_count
+        } else {
+            author_followers = toot.account.followers_count;
+            reblogs = toot.reblogs_count
+            favs = toot.favourites_count
+        }
+        let weight = author_followers > 0 ? 1 / Math.sqrt(author_followers) : 0
+        return weight * geometricMean([reblogs + 1, favs + 1])
+    }
+    function update_top_toots(top_t, t) {
+        let max_top_toots = 15;
+        let score = tootScore(t);
+        if (top_t.length < max_top_toots || top_t[top_t.length-1].score < score) {
+            top_t.push({toot: t, score: score})
+            return top_t.sort((a, b) => {
+                return b.score - a.score
+            }).slice(0, max_top_toots)
+        } else {
+            return top_t;
+        }
+    }
+
+    async function processTimeLine() {
         followed_done = 0;
         processing = true;
         let followed = await getFollowed();
@@ -196,12 +250,15 @@
         }); /* ### */
         followed_todo = fresh_followed.length;
         let found_links = [];
+        let top_toots_wip = [];
         for (let i = 0; i < fresh_followed.length; i++) {
             let f = fresh_followed[i];
             let toots = await getToots(f.id, not_before.toISOString());
             console.log(`${f.acct} has ${toots.length} toots`);
             toots.forEach(t => {
                 found_links = found_links.concat(extractLinks(t))
+                top_toots_wip = update_top_toots(top_toots_wip, t)
+                // deduplicate reblogs
             });
             links_found = found_links.length;
             followed_done = i + 1;
@@ -252,14 +309,12 @@
         return prepared_links;
     }
 
-    function toggleLinkDetails(i) {
-        $top_links[i].expanded = !$top_links[i].expanded;
-    }
+    checkVersion();
 </script>
 
 {#if $token}
     <p class="grouped">
-        <button on:click={fillTopLinks} class="button primary">Get/refresh the top links</button>
+        <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
         <button on:click={doLogout} class="button outline dark">Logout</button>
     </p>
     {#if processing}
@@ -267,67 +322,14 @@
             <progress value={followed_done} max={followed_todo}>downloading...</progress>
             Links found: {links_found}</p>
     {/if}
-    {#if $top_links}
-        <p>These are the latest most shared links from people you follow:</p>
-        <ul class="top_links">
-            {#each $top_links as link, tli}
-                <li>
-                    <a href="{link.url}" target="_blank" rel="noreferrer" title="{link.description||link.title}">
-                        <div class="link_image">
-                            {#if link.image}<img src="{link.image}" alt="">{/if}
-                        </div>
-                        <div class="link_text">
-                            <strong class="link_title">{link.title}</strong><br />
-                            <span class="link_description">{link.description}</span>
-                            {#if link.provider_name}
-                                <span class="provider_name">({link.provider_name})</span>
-                            {/if}
-                        </div>
-                    </a>
-                    {#if link.expanded}
-                        <div><a title="Click to collapse" class="shared_bar" href="?collapse"
-                                on:click|preventDefault={() => {toggleLinkDetails(tli)}}><i class="fa fa-compress"></i></a>
-                        </div>
-                        {#each link.tooters as linker, i}
-                            <a class="shared_bar" href="{link.quotations[linker.acct].toot_url}" target="_blank"
-                               rel="noreferrer" title="{link.quotations[linker.acct].toot_text}">
-                                <i class="fa fa-comment-o" aria-hidden="true"></i>
-                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
-                                     src="{linker.avatar_url}"/>
-                                <span class="quote"> &ldquo;{link.quotations[linker.acct].toot_text}&rdquo;</span>
-                            </a>
-                        {/each}
-                        {#if link.boosters.length > 0}
-                        <span class="shared_bar">
-                        <i class="fa fa-retweet" aria-hidden="true"></i>
-                            {#each link.boosters as linker}
-                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
-                                     src="{linker.avatar_url}"/>
-                        {/each}
-                        </span>
-                        {/if}
-                    {:else}
-                        <a title="Click for more details" class="shared_bar" href="?expand"
-                           on:click|preventDefault={() => {toggleLinkDetails(tli)}}>
-                            {#each link.tooters as linker, j}
-                                {#if j === 0}<i class="fa fa-comment-o" aria-hidden="true"></i>{/if}
-                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
-                                     src="{linker.avatar_url}"/>
-                            {/each}
-                            {#each link.boosters as linker, j}
-                                {#if j === 0}<i class="fa fa-retweet" aria-hidden="true"></i>{/if}
-                                <img class="linker_avatar" alt="{linker.display_name}" title="{linker.display_name}"
-                                     src="{linker.avatar_url}"/>
-                            {/each}
-                        </a>
-                    {/if}
-                </li>
-            {/each}
-        </ul>
+    <nav class="tabs is-full">
+        <a class:active={$active_tab==='top_links'} href="?top_links" on:click|preventDefault={()=>{$active_tab = 'top_links'}}>Top Links <i class="fa fa-link" aria-hidden="true"></i></a>
+        <a class:active={$active_tab==='top_toots'} href="?top_toots" on:click|preventDefault={()=>{$active_tab = 'top_toots'}}>Top Toots <i class="fa fa-comments" aria-hidden="true"></i></a>
+    </nav>
+    {#if $active_tab == 'top_links'}
+        <TopLinks/>
     {:else}
-        <p>Pressing the "Get/Refresh" button above, you will collect the links tooted/boosted in the last 24 hours
-            by the people you follow on Mastodon.</p>
-        <p>After the collection is completed, the links shared by the most people will be shown to you.</p>
+        <p>Nothing here</p>
     {/if}
 {:else}
     <p>Quintessence shows you the top links that the people that you follow on
