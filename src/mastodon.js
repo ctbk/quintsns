@@ -1,3 +1,5 @@
+import {masto_instance} from "./stores.js";
+
 function mySleep(delayTime) {
     return new Promise(resolve => setTimeout(resolve, delayTime));
 }
@@ -71,7 +73,19 @@ function extractPureText(htmlText) {
     let txt = e.innerText || e.textContent;
     return txt.replace(/@[^ ]+/g, '').replace(/https?:\/\/[^ ]/ig, '').trim()
 }
-export function extractLinks(toot) {
+export function toot_instance_url(instance, toot) {
+    let author_account;
+    let toot_id;
+    if (toot.reblog) {
+        author_account = toot.reblog.account;
+        toot_id = toot.reblog.id;
+    } else {
+        author_account = toot.account;
+        toot_id = toot.id;
+    }
+    return instance + '/@' + author_account.acct + '/' + toot_id
+}
+export function extractLinks(toot, instance) {
     let content;
     let card;
     let parsed_links = [];
@@ -106,7 +120,7 @@ export function extractLinks(toot) {
                 provider_name: a_tag.href === card.url ? card.provider_name : undefined,
                 provider_url: a_tag.href === card.url ? card.provider_url : undefined,
                 toot_text: action === 'toot' ? extractPureText(content) : undefined,
-                toot_url: toot.url
+                toot_url: instance ? toot_instance_url(instance, toot) : toot.url
             });
         }
     }

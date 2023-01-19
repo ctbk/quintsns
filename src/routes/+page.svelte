@@ -1,9 +1,10 @@
 <script>
     import {client_id, client_secret, masto_instance, myself, token, top_links, quint_version} from '../stores.js';
-    import {active_tab} from '../stores.js';
+    import {active_tab, top_toots} from '../stores.js';
     import {extractLinks, getPaginated, getAccessCode} from '../mastodon.js';
     import {onMount} from 'svelte';
     import TopLinks from "./TopLinks.svelte";
+    import TopToots from "./TopToots.svelte";
 
     let hours_back = 24;
     let links_found = 0;
@@ -174,18 +175,6 @@
         });
         return fi
     }
-    function toot_instance_url(toot) {
-        let author_account;
-        let toot_id;
-        if (toot.reblog) {
-            author_account = toot.reblog.account;
-            toot_id = toot.reblog.id;
-        } else {
-            author_account = toot.account;
-            toot_id = toot.reblog.id;
-        }
-        return $masto_instance + '/@' + author_account.acct + '/' + toot_id
-    }
     function geometricMean(arr) {
         let sum = 0;
         for (let i = 0; i < arr.length; i++)
@@ -194,44 +183,46 @@
         return Math.exp(sum);
     }
 
-    function geometricMean2(arr) {
-        let product = 1;
-        for (let i = 0; i < arr.length; i++)
-            product = product * arr[i];
-        return Math.pow(product, 1 / arr.length);
+    // function geometricMean2(arr) {
+    //     let product = 1;
+    //     for (let i = 0; i < arr.length; i++)
+    //         product = product * arr[i];
+    //     return Math.pow(product, 1 / arr.length);
+    // }
+    function extractToot(toot) {
+        if (toot.reblog) {
+            return toot.reblog
+        } else {
+            return toot
+        }
     }
     function tootScore(toot) {
-        let author_followers;
-        let reblogs;
-        let favs;
-        if (toot.reblog) {
-            author_followers = toot.reblog.account.followers_count;
-            reblogs = toot.reblog.reblogs_count
-            favs = toot.reblog.favourites_count
-        } else {
-            author_followers = toot.account.followers_count;
-            reblogs = toot.reblogs_count
-            favs = toot.favourites_count
-        }
-        let weight = author_followers > 0 ? 1 / Math.sqrt(author_followers) : 0
-        return weight * geometricMean([reblogs + 1, favs + 1])
+        let author_followers = toot.account.followers_count;
+        let reblogs = toot.reblogs_count
+        let favs = toot.favourites_count
+        let weight = author_followers > 0 ? 1 / Math.sqrt(20 + author_followers) : 0
+        let hours_by = (Date.now() - new Date(toot.created_at)) / 1000 / 60 / 60
+        let time_weight = hours_by > 0 ? 1 / (6 + hours_by) : 0
+        return time_weight * weight * geometricMean([reblogs + 1, favs + 1])
     }
-    function update_top_toots(top_t, t) {
-        let max_top_toots = 15;
-        let score = tootScore(t);
+    function update_top_toots(top_t, seen_t, t) {
+        if (seen_t.has(t.id))
+            return top_t
+        seen_t.add(t.id)
+        let max_top_toots = 50
+        let score = tootScore(t)
         if (top_t.length < max_top_toots || top_t[top_t.length-1].score < score) {
             top_t.push({toot: t, score: score})
             return top_t.sort((a, b) => {
                 return b.score - a.score
             }).slice(0, max_top_toots)
         } else {
-            return top_t;
+            return top_t
         }
     }
 
     async function processTimeLine() {
         followed_done = 0;
-        processing = true;
         let followed = await getFollowed();
         let followed_info = buildFollowedInfo(followed);
         // console.log(followed);
@@ -251,20 +242,22 @@
         followed_todo = fresh_followed.length;
         let found_links = [];
         let top_toots_wip = [];
+        let seen_toots = new Set();
+        processing = true;
         for (let i = 0; i < fresh_followed.length; i++) {
             let f = fresh_followed[i];
             let toots = await getToots(f.id, not_before.toISOString());
             console.log(`${f.acct} has ${toots.length} toots`);
             toots.forEach(t => {
-                found_links = found_links.concat(extractLinks(t))
-                top_toots_wip = update_top_toots(top_toots_wip, t)
-                // deduplicate reblogs
+                found_links = found_links.concat(extractLinks(t, $masto_instance))
+                top_toots_wip = update_top_toots(top_toots_wip, seen_toots, extractToot(t))
             });
             links_found = found_links.length;
             followed_done = i + 1;
         }
-        processing = false;
-        $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info);
+        processing = false
+        $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info)
+        $top_toots = top_toots_wip
     }
 
     function trunc_str(s, max_length = 120) {
@@ -329,7 +322,7 @@
     {#if $active_tab == 'top_links'}
         <TopLinks/>
     {:else}
-        <p>Nothing here</p>
+        <TopToots/>
     {/if}
 {:else}
     <p>Quintessence shows you the top links that the people that you follow on

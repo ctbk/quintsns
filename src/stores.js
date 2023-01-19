@@ -29,5 +29,6 @@ export const client_secret = createLSStore('client_secret');
 export const masto_instance = createLSStore('masto_instance');
 export const myself = createLSStore('myself');
 export const top_links = createLSStore('top_links');
+export const top_toots = createLSStore('top_toots');
 export const quint_version = createLSStore('quint_version');
 export const active_tab = createLSStore('active_tab');

@@ -21,7 +21,7 @@
             --color-primary: #bcbdff;
             --grid-maxWidth: 100rem;
         }
-        .beta {
+        .beta, .claim {
             font-size: 40%;
             color: var(--color-darkGrey);
         }
@@ -33,12 +33,12 @@
             color:var(--font-color)
         }
 
-        ul.top_links {
+        ul.top_links, ul.top_toots {
             list-style: none;
             padding: 0;
         }
 
-        ul.top_links > li {
+        ul.top_links > li, ul.top_toots > li {
             background-color: var(--bg-secondary-color);
         }
 
@@ -46,7 +46,8 @@
             display: flex;
         }
 
-        ul.top_links > li a:hover {
+        ul.top_links > li a:hover,
+        ul.top_toots > li a:hover {
             background-color: #222;
         }
 
@@ -82,7 +83,8 @@
 
         }
 
-        ul.top_links > li {
+        ul.top_links > li,
+        ul.top_toots > li {
             border: 1px solid var(--color-darkGrey);
             border-radius: 8px;
             margin-bottom: 1em;
@@ -100,7 +102,10 @@
             border-bottom-left-radius: 8px;
             border-bottom-right-radius: 8px;
         }
-        .shared_bar {padding-bottom: 4px; padding-top: 4px}
+        .shared_bar {
+            overflow:hidden;
+            padding-bottom: 4px; 
+	    padding-top: 4px}
 
         ul.top_links > li a:hover div.shares {
             background-color: var(--bg-secondary-color);
@@ -121,7 +126,7 @@
             margin-left: 8px
         }
 
-        img.linker_avatar {
+        img.linker_avatar, img.tooter_avatar {
             height: 2em;
             border-radius: 2px;
             margin-left: 4px;
@@ -160,12 +165,25 @@
             color: var(--font-color);
             line-height: 2em;
         }
+        ul.top_toots > li {
+            padding: 10px;
+            overflow: hidden;
+        }
+        ul.top_toots > li > a {
+            color: var(--font-color)
+        }
+        div.toot_media img {
+            margin-left: 1em;
+        }
+        span.tooter_acct, span.toot_date, span.interactions {
+            color: var(--color-darkGrey)
+        }
 
     </style>
 </head>
 <body data-sveltekit-preload-data="hover">
 <div class="container">
-    <h1>Quintessence <span class="beta">beta</span></h1>
+    <h1>Quintessence<sup class="beta">&nbsp;&beta;</sup> <span class="claim">Your Timeline &ndash; Distilled</span></h1>
     <div style="display: contents">%sveltekit.body%</div>
     <footer>
         Quintessence was made by <a rel="me" href="https://mastodon.uno/@ctbk">ctbk</a>;
