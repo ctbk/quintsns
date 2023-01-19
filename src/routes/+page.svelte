@@ -96,6 +96,9 @@
             $top_links = ''
             $quint_version = cur_version
         }
+        if (!$active_tab) {
+            $active_tab = 'top_links'
+        }
     }
 
     onMount(async () => {

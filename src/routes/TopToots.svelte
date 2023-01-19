@@ -7,7 +7,7 @@
         return fmt.format(d)
     }
 </script>
-{#if $top_toots.length}
+{#if $top_toots && $top_toots.length}
     <ul class="top_toots">
         {#each $top_toots as t}
         <li>
