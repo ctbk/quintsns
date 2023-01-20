@@ -1,7 +1,16 @@
 <script>
-    import {client_id, client_secret, masto_instance, myself, token, top_links, quint_version} from '../stores.js';
-    import {active_tab, top_toots} from '../stores.js';
-    import {extractLinks, getPaginated, getAccessCode} from '../mastodon.js';
+    import {
+        active_tab,
+        client_id,
+        client_secret,
+        masto_instance,
+        myself,
+        quint_version,
+        token,
+        top_links,
+        top_toots
+    } from '../stores.js';
+    import {cleanDisplayName, extractLinks, getAccessCode, getPaginated} from '../mastodon.js';
     import {onMount} from 'svelte';
     import TopLinks from "./TopLinks.svelte";
     import TopToots from "./TopToots.svelte";
@@ -87,6 +96,7 @@
         $client_secret = '';
         $myself = '';
         $top_links = '';
+        $top_toots = '';
     }
 
     function checkVersion() {
@@ -164,10 +174,6 @@
         return await getPaginated(url, $token, not_before);
     }
 
-    function cleanDisplayName(name) {
-        return name.replace(/:[^:]+:/g, '')
-    }
-
     function buildFollowedInfo(followed) {
         let fi = {};
         followed.forEach(fl => {
@@ -203,10 +209,13 @@
         let author_followers = toot.account.followers_count;
         let reblogs = toot.reblogs_count
         let favs = toot.favourites_count
+        let replies = toot.replies_count
         let weight = author_followers > 0 ? 1 / Math.sqrt(20 + author_followers) : 0
         let hours_by = (Date.now() - new Date(toot.created_at)) / 1000 / 60 / 60
         let time_weight = hours_by > 0 ? 1 / (6 + hours_by) : 0
-        return time_weight * weight * geometricMean([reblogs + 1, favs + 1])
+        if (reblogs + favs + replies < 2)
+            return 0
+        return time_weight * weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
     }
     function update_top_toots(top_t, seen_t, t) {
         if (seen_t.has(t.id))

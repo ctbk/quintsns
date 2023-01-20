@@ -1,5 +1,3 @@
-import {masto_instance} from "./stores.js";
-
 function mySleep(delayTime) {
     return new Promise(resolve => setTimeout(resolve, delayTime));
 }
@@ -145,4 +143,8 @@ export async function getAccessCode(masto_instance, client_id, client_secret, co
     let create_token_resp = await fetch(turl, options);
     let tk = await create_token_resp.json();
     return tk['access_token']
+}
+
+export function cleanDisplayName(name) {
+    return name.replace(/:[^:]+:/g, '')
 }

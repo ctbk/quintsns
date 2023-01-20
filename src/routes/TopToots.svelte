@@ -1,6 +1,6 @@
 <script>
     import {top_toots, masto_instance} from "../stores.js";
-    import {toot_instance_url} from "../mastodon.js";
+    import {toot_instance_url, cleanDisplayName} from "../mastodon.js";
     function formattedDate(date_string) {
         let d = new Date(date_string)
         let fmt = Intl.DateTimeFormat([], {timeStyle: "short", dateStyle: "short"})
@@ -14,8 +14,10 @@
             <a href="{toot_instance_url($masto_instance, t.toot)}" target="_blank" rel="noreferrer">
                 <span class="toot_credits">
                     <img class="tooter_avatar" src="{t.toot.account.avatar}" alt="{t.toot.account.display_name}">
-                    <span class="tooter_name">{t.toot.account.display_name}</span>
-                    <span class="tooter_acct">({t.toot.account.acct})</span>
+                    <div class="tooter_name_acct">
+                        <span class="tooter_name">{cleanDisplayName(t.toot.account.display_name)}</span><br />
+                        <span class="tooter_acct">@{t.toot.account.acct}</span>
+                    </div>
                 </span>
                 <div class="toot_content">{@html t.toot.content}</div>
                 <div class="toot_media">

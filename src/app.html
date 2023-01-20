@@ -126,12 +126,16 @@
             margin-left: 8px
         }
 
-        img.linker_avatar, img.tooter_avatar {
+        img.linker_avatar {
             height: 2em;
+        }
+        img.tooter_avatar {
+            height: 3em;
+        }
+        img.linker_avatar, img.tooter_avatar {
             border-radius: 2px;
             margin-left: 4px;
         }
-
         div.link_details {
             overflow: hidden;
             text-overflow: ellipsis;
@@ -177,6 +181,15 @@
         }
         span.tooter_acct, span.toot_date, span.interactions {
             color: var(--color-darkGrey)
+        }
+        span.toot_credits {
+            display: flex;
+        }
+        div.tooter_name_acct {
+            margin-left: 0.5em;
+        }
+        a:hover:not(.button) {
+            opacity: 100%;
         }
 
     </style>
