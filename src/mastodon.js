@@ -71,6 +71,9 @@ function extractPureText(htmlText) {
     let txt = e.innerText || e.textContent;
     return txt.replace(/@[^ ]+/g, '').replace(/https?:\/\/[^ ]/ig, '').trim()
 }
+export function account_instance_url(instance, account) {
+   return instance + '/@' + account.acct
+}
 export function toot_instance_url(instance, toot) {
     let author_account;
     let toot_id;
