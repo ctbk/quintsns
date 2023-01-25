@@ -11,6 +11,7 @@
         top_toots
     } from '../stores.js';
     import {cleanDisplayName, extractLinks, getAccessCode, getPaginated} from '../mastodon.js';
+    import {para_req} from '../mastodon.js';
     import {onMount} from 'svelte';
     import TopLinks from "./TopLinks.svelte";
     import TopToots from "./TopToots.svelte";
@@ -173,6 +174,13 @@
         url.searchParams.set('limit', "100");
         return await getPaginated(url, $token, not_before);
     }
+    async function getTootsPara(user_id, not_before) {
+        let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses');
+        url.searchParams.set('limit', "100");
+        let toots = await getPaginated(url, $token, not_before);
+        followed_done += 1;
+        return toots
+    }
 
     function buildFollowedInfo(followed) {
         let fi = {};
@@ -215,6 +223,8 @@
         let time_weight = hours_by > 0 ? 1 / (6 + hours_by) : 0
         if (reblogs + favs + replies < 2)
             return 0
+        if (toot.favourited || toot.reblogged || toot.bookmarked)
+            return 0
         return time_weight * weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
     }
     function update_top_toots(top_t, seen_t, t) {
@@ -233,6 +243,43 @@
         }
     }
 
+    async function processTimeLinePara() {
+        followed_done = 0;
+        let followed = await getFollowed();
+        let followed_info = buildFollowedInfo(followed);
+        // console.log(followed);
+        let d = new Date();
+        let not_before = new Date();
+        not_before.setHours(not_before.getHours() - hours_back);
+        d.setHours(d.getHours() - hours_back);
+        d.setUTCHours(0);
+        d.setUTCMinutes(0);
+        d.setUTCSeconds(0);
+        d.setUTCMilliseconds(0);
+        let fresh_followed = followed.filter(f => {
+            let parsedDate = new Date();
+            parsedDate.setTime(Date.parse(f.last_status_at));
+            return parsedDate >= d;
+        }); /* ### */
+        followed_todo = fresh_followed.length;
+        let found_links = [];
+        let top_toots_wip = [];
+        let seen_toots = new Set();
+        processing = true;
+        let followed_toots = await Promise.all(fresh_followed.map(f => {
+            return getTootsPara(f.id, not_before.toISOString())
+        }))
+        followed_toots.forEach(ft =>{
+            ft.forEach(t=>{
+                found_links = found_links.concat(extractLinks(t, $masto_instance))
+                top_toots_wip = update_top_toots(top_toots_wip, seen_toots, extractToot(t))
+            })
+            links_found = found_links.length;
+        })
+        processing = false
+        $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info)
+        $top_toots = top_toots_wip
+    }
     async function processTimeLine() {
         followed_done = 0;
         let followed = await getFollowed();
@@ -313,7 +360,6 @@
         }
         return prepared_links;
     }
-
     checkVersion();
 </script>
 
@@ -321,6 +367,7 @@
     <p class="grouped">
         <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
         <button on:click={doLogout} class="button outline dark">Logout</button>
+        <button on:click={processTimeLinePara} class="button outline dark">Experiment</button>
     </p>
     {#if processing}
         <p>

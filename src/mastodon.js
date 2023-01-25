@@ -14,7 +14,7 @@ export async function pace(remaining) {
     return await mySleep(msec);
 }
 
-export async function getPaginated(url, token, not_before) {
+export async function getPaginated(url, token, not_before, jitter=false) {
     let items = [];
     let options = {};
     let items_batch;
@@ -63,17 +63,19 @@ export async function getPaginated(url, token, not_before) {
     } while (loops < 50)
     console.log("Finished pagination after " + loops);
     return items;
-
 }
+
 function extractPureText(htmlText) {
     let e = document.createElement('span')
     e.innerHTML = htmlText.replace(/<br ?\/?>/ig, ' ');
     let txt = e.innerText || e.textContent;
     return txt.replace(/@[^ ]+/g, '').replace(/https?:\/\/[^ ]/ig, '').trim()
 }
+
 export function account_instance_url(instance, account) {
-   return instance + '/@' + account.acct
+    return instance + '/@' + account.acct
 }
+
 export function toot_instance_url(instance, toot) {
     let author_account;
     let toot_id;
@@ -86,6 +88,7 @@ export function toot_instance_url(instance, toot) {
     }
     return instance + '/@' + author_account.acct + '/' + toot_id
 }
+
 export function extractLinks(toot, instance) {
     let content;
     let card;
@@ -150,4 +153,16 @@ export async function getAccessCode(masto_instance, client_id, client_secret, co
 
 export function cleanDisplayName(name) {
     return name.replace(/:[^:]+:/g, '')
+}
+
+export async function para_req(names) {
+    let reqs = []
+    let resps = []
+    let jsons = []
+    reqs = names.map((name) => {
+        return fetch(`https://api.genderize.io/?name=${name}`)
+    })
+    resps = await Promise.all(reqs)
+    jsons = await Promise.all(resps.map(r => {return r.json()}))
+    return jsons.map(j => {return j.gender})
 }

@@ -12,7 +12,8 @@
         {#each $top_toots as t}
         <li>
             <a href="{toot_instance_url($masto_instance, t.toot)}" target="_blank" rel="noreferrer">
-                <a class="toot_credits" href="{account_instance_url($masto_instance, t.toot.account)}">
+                <a class="toot_credits" href="{account_instance_url($masto_instance, t.toot.account)}"
+                   target="_blank" rel="noreferrer">
                     <img class="tooter_avatar" src="{t.toot.account.avatar}" alt="{t.toot.account.display_name}">
                     <div class="tooter_name_acct">
                         <span class="tooter_name">{cleanDisplayName(t.toot.account.display_name)}</span><br />
@@ -28,9 +29,9 @@
                 <nav class="nav">
                     <div class="nav-left">
                         <span class="interactions">
-                            <i class="fa fa-retweet" aria-label="boosts"></i>{t.toot.reblogs_count} &nbsp;
-                            <i class="fa fa-star" aria-label="stars"></i>{t.toot.favourites_count} &nbsp;
-                            <i class="fa fa-mail-reply" aria-label="replies"></i>{t.toot.replies_count}
+                            <i class="fa fa-mail-reply" aria-label="replies"></i>{t.toot.replies_count}&nbsp;
+                            <i class="fa fa-retweet" aria-label="boosts"></i>{t.toot.reblogs_count}&nbsp;
+                            <i class="fa fa-star" aria-label="stars"></i>{t.toot.favourites_count}
                         </span>
                     </div>
                     <div class="nav-right"><span class="toot_date">{formattedDate(t.toot.created_at)}</span></div>
