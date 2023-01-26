@@ -11,7 +11,6 @@
         top_toots
     } from '../stores.js';
     import {cleanDisplayName, extractLinks, getAccessCode, getPaginated} from '../mastodon.js';
-    import {para_req} from '../mastodon.js';
     import {onMount} from 'svelte';
     import TopLinks from "./TopLinks.svelte";
     import TopToots from "./TopToots.svelte";
@@ -377,7 +376,7 @@
     {#if processing}
         <p>
             <progress value={followed_done} max={followed_todo}>downloading...</progress>
-            Retrieving data, please wait</p>
+            Retrieving data...</p>
     {/if}
     <nav class="tabs is-full">
         <a class:active={$active_tab==='top_links'} href="?top_links"

@@ -166,19 +166,3 @@ export async function getAccessCode(masto_instance, client_id, client_secret, co
 export function cleanDisplayName(name) {
     return name.replace(/:[^:]+:/g, '')
 }
-
-export async function para_req(names) {
-    let reqs = []
-    let resps = []
-    let jsons = []
-    reqs = names.map((name) => {
-        return fetch(`https://api.genderize.io/?name=${name}`)
-    })
-    resps = await Promise.all(reqs)
-    jsons = await Promise.all(resps.map(r => {
-        return r.json()
-    }))
-    return jsons.map(j => {
-        return j.gender
-    })
-}
