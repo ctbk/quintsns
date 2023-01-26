@@ -6,15 +6,20 @@ export async function pace(remaining) {
     let msec;
     if (remaining > 130) return;
     if (remaining > 30) {
-        msec = 1000 * (1 - ((remaining - 50) / 100));
+        msec = 2000 * (1 - ((remaining - 50) / 100));
+    } else if (remaining > 10) {
+        msec = 2500;
     } else {
-        msec = 1100;
+        msec = 5000;
     }
     console.log(`pace: calls remaining ${remaining}, waiting ${msec}`);
     return await mySleep(msec);
 }
 
-export async function getPaginated(url, token, not_before, jitter=false) {
+let remaining_calls = 500;
+
+export async function getPaginated(url, token, not_before, jitter = false) {
+    const jitter_spread = 3000;
     let items = [];
     let options = {};
     let items_batch;
@@ -24,11 +29,18 @@ export async function getPaginated(url, token, not_before, jitter=false) {
     if (token) {
         options = {'headers': {'Authorization': 'Bearer ' + token}};
     }
-    let remaining_calls = 500;
+    if (jitter) {
+        await mySleep(Math.round(Math.random() * jitter_spread))
+    }
     do {
-        await pace(remaining_calls);
-        resp = await fetch(url, options);
-        remaining_calls = resp.headers.get('X-RateLimit-Remaining');
+        do {
+            await pace(remaining_calls);
+            resp = await fetch(url, options);
+            remaining_calls = resp.headers.get('X-RateLimit-Remaining');
+            if (!resp.ok) {
+                console.log(`Error fetching data: ${resp.status} - ${resp.statusText}`)
+            }
+        } while (!resp.ok)
         items_batch = await resp.json();
         if (items_batch.length === 0) break;
         try {
@@ -163,6 +175,10 @@ export async function para_req(names) {
         return fetch(`https://api.genderize.io/?name=${name}`)
     })
     resps = await Promise.all(reqs)
-    jsons = await Promise.all(resps.map(r => {return r.json()}))
-    return jsons.map(j => {return j.gender})
+    jsons = await Promise.all(resps.map(r => {
+        return r.json()
+    }))
+    return jsons.map(j => {
+        return j.gender
+    })
 }

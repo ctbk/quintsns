@@ -174,10 +174,11 @@
         url.searchParams.set('limit', "100");
         return await getPaginated(url, $token, not_before);
     }
+
     async function getTootsPara(user_id, not_before) {
         let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses');
         url.searchParams.set('limit', "100");
-        let toots = await getPaginated(url, $token, not_before);
+        let toots = await getPaginated(url, $token, not_before, true);
         followed_done += 1;
         return toots
     }
@@ -192,6 +193,7 @@
         });
         return fi
     }
+
     function geometricMean(arr) {
         let sum = 0;
         for (let i = 0; i < arr.length; i++)
@@ -213,6 +215,7 @@
             return toot
         }
     }
+
     function tootScore(toot) {
         let author_followers = toot.account.followers_count;
         let reblogs = toot.reblogs_count
@@ -227,13 +230,14 @@
             return 0
         return time_weight * weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
     }
+
     function update_top_toots(top_t, seen_t, t) {
         if (seen_t.has(t.id))
             return top_t
         seen_t.add(t.id)
         let max_top_toots = 50
         let score = tootScore(t)
-        if (top_t.length < max_top_toots || top_t[top_t.length-1].score < score) {
+        if (top_t.length < max_top_toots || top_t[top_t.length - 1].score < score) {
             top_t.push({toot: t, score: score})
             return top_t.sort((a, b) => {
                 return b.score - a.score
@@ -269,8 +273,8 @@
         let followed_toots = await Promise.all(fresh_followed.map(f => {
             return getTootsPara(f.id, not_before.toISOString())
         }))
-        followed_toots.forEach(ft =>{
-            ft.forEach(t=>{
+        followed_toots.forEach(ft => {
+            ft.forEach(t => {
                 found_links = found_links.concat(extractLinks(t, $masto_instance))
                 top_toots_wip = update_top_toots(top_toots_wip, seen_toots, extractToot(t))
             })
@@ -280,6 +284,7 @@
         $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info)
         $top_toots = top_toots_wip
     }
+
     async function processTimeLine() {
         followed_done = 0;
         let followed = await getFollowed();
@@ -360,25 +365,29 @@
         }
         return prepared_links;
     }
+
     checkVersion();
 </script>
 
 {#if $token}
     <p class="grouped">
-        <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
+        <button on:click={processTimeLinePara} class="button primary">Get/refresh data</button>
         <button on:click={doLogout} class="button outline dark">Logout</button>
-        <button on:click={processTimeLinePara} class="button outline dark">Experiment</button>
     </p>
     {#if processing}
         <p>
             <progress value={followed_done} max={followed_todo}>downloading...</progress>
-            Links found: {links_found}</p>
+            Retrieving data, please wait</p>
     {/if}
     <nav class="tabs is-full">
-        <a class:active={$active_tab==='top_links'} href="?top_links" on:click|preventDefault={()=>{$active_tab = 'top_links'}}>Top Links <i class="fa fa-link" aria-hidden="true"></i></a>
-        <a class:active={$active_tab==='top_toots'} href="?top_toots" on:click|preventDefault={()=>{$active_tab = 'top_toots'}}>Top Toots <i class="fa fa-comments" aria-hidden="true"></i></a>
+        <a class:active={$active_tab==='top_links'} href="?top_links"
+           on:click|preventDefault={()=>{$active_tab = 'top_links'}}>Top Links <i class="fa fa-link"
+                                                                                  aria-hidden="true"></i></a>
+        <a class:active={$active_tab==='top_toots'} href="?top_toots"
+           on:click|preventDefault={()=>{$active_tab = 'top_toots'}}>Top Toots <i class="fa fa-comments"
+                                                                                  aria-hidden="true"></i></a>
     </nav>
-    {#if $active_tab == 'top_links'}
+    {#if $active_tab === 'top_links'}
         <TopLinks/>
     {:else}
         <TopToots/>
