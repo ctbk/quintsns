@@ -192,8 +192,19 @@
             opacity: 100%;
         }
 
+        div.myrow {
+            display: flex;
+        }
+        div.leftcol {
+            width: 100%;
+        }
+        div.rightcol {
+            text-align: right;
+            width: auto;
+        }
         a.settings {
             font-size:140%;
+            color:var(--color-darkGrey)
         }
         p.setting {
         }
@@ -215,31 +226,6 @@
             box-shadow: none;
         }
         input[type="range"]::-webkit-slider-runnable-track {
-        }
-
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            border-bottom: 1px dotted var(--color-primary);
-        }
-
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 20em;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-
-            position: absolute;
-            z-index: 1;
-            bottom: 100%;
-            margin-left: -10em;
-        }
-
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
         }
     </style>
 </head>

@@ -387,15 +387,15 @@
 </script>
 
 {#if $token}
-    <nav class="nav">
-        <div class="nav-left">
+    <div class="myrow">
+        <div class="leftcol">
             <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
         </div>
-        <div class="nav-right">
+        <div class="rightcol">
             <a href="?settings" on:click|preventDefault={toggleSettings} class="settings" title="Show/hide settings">
                 <i class="fa fa-cog" aria-label="Settings"></i></a>
         </div>
-    </nav>
+    </div>
     {#if settings_shown}
         <div id="settings">
             <fieldset>
@@ -428,27 +428,27 @@
                         settings</a></p>
                     {#if adv_settings_shown}
                         <p class="setting">
-                            Favourites importance:<br/>
+                            Favourites:<br/>
                             <input class="range data_amount" type="range" min="0" max="4" step="1"
                                    bind:value={$settings.favs_importance}> {importance_map[$settings.favs_importance]}
                         </p>
                         <p class="setting">
-                            Boosts importance:<br/>
+                            Boosts:<br/>
                             <input class="range data_amount" type="range" min="0" max="4" step="1"
                                    bind:value={$settings.reblogs_importance}> {importance_map[$settings.reblogs_importance]}
                         </p>
                         <p class="setting">
-                            Replies importance:<br/>
+                            Replies:<br/>
                             <input class="range data_amount" type="range" min="0" max="4" step="1"
                                    bind:value={$settings.replies_importance}> {importance_map[$settings.replies_importance]}
                         </p>
                         <p class="setting">
-                            <span class="tooltip">Freshness importance:<span class="tooltiptext">Increase this importance to give recent toots a higher ranking</span></span><br/>
+                            Freshness:<br/>
                             <input class="range data_amount" type="range" min="0" max="4" step="1"
                                    bind:value={$settings.fresh_importance}> {importance_map[$settings.fresh_importance]}
                         </p>
                         <p class="setting">
-                            <span class="tooltip">Followers importance:<span class="tooltiptext">Increase this importance to give toots from accounts with <em>less</em> followers a higher ranking</span></span><br/>
+                            Tooters with Few Followers:<br/>
                             <input class="range data_amount" type="range" min="0" max="4" step="1"
                                    bind:value={$settings.fol_importance}> {importance_map[$settings.fol_importance]}
                         </p>
@@ -456,13 +456,13 @@
                 </fieldset>
             </fieldset>
             <p>Settings will be applied at the next data refresh.</p>
-            <nav class="nav">
-                <div class="nav-left">
+            <nav class="myrow">
+                <div class="leftcol">
                     <button class="button" on:click={toggleSettings}>Close</button>
-                    <button class="button outline dark" on:click={resetSettings}>Defaults</button>
+                    <button class="button outline dark" on:click={resetSettings}>Reset</button>
                 </div>
-                <div class="nav-right">
-                    <button on:click={doLogout} class="button outline dark">Logout</button>
+                <div class="rightcol">
+                    <button on:click={doLogout} class="button error">Logout</button>
                 </div>
             </nav>
         </div>
