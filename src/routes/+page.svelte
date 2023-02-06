@@ -221,8 +221,8 @@
         let foll_weight = author_followers > 0 ? 1 / (Math.sqrt(20 + (author_followers * $settings.fol_importance / 2))) : 0
         let hours_by = (Date.now() - new Date(toot.created_at)) / 1000 / 60 / 60
         let time_weight = hours_by > 0 ? 1 / ((6 + (hours_by * $settings.fresh_importance / 2))) : 0
-        // if (reblogs + favs + replies < 2)
-        //     return 0
+        if ((reblogs + favs + replies) < 2)
+            return 0
         if (toot.favourited || toot.reblogged || toot.bookmarked)
             return 0
         return time_weight * foll_weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
