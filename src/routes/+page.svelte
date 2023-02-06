@@ -390,11 +390,10 @@
     <nav class="nav">
         <div class="nav-left">
             <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
-            <a href="?settings" on:click|preventDefault={toggleSettings} class="settings" title="Show/hide settings">
-                <i class="fa fa-cog" aria-label="Settings"></i></a>
         </div>
         <div class="nav-right">
-            <button on:click={doLogout} class="button outline dark">Logout</button>
+            <a href="?settings" on:click|preventDefault={toggleSettings} class="settings" title="Show/hide settings">
+                <i class="fa fa-cog" aria-label="Settings"></i></a>
         </div>
     </nav>
     {#if settings_shown}
@@ -460,9 +459,10 @@
             <nav class="nav">
                 <div class="nav-left">
                     <button class="button" on:click={toggleSettings}>Close</button>
+                    <button class="button outline dark" on:click={resetSettings}>Defaults</button>
                 </div>
                 <div class="nav-right">
-                    <button class="button outline dark" on:click={resetSettings}>Reset to Defaults</button>
+                    <button on:click={doLogout} class="button outline dark">Logout</button>
                 </div>
             </nav>
         </div>
