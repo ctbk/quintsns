@@ -8,20 +8,21 @@
         quint_version,
         token,
         top_links,
-        top_toots
+        top_toots,
+        settings
     } from '../stores.js';
     import {cleanDisplayName, extractLinks, getAccessCode, getPaginated} from '../mastodon.js';
     import {onMount} from 'svelte';
     import TopLinks from "./TopLinks.svelte";
     import TopToots from "./TopToots.svelte";
 
-    let hours_back = 24;
-    let links_found = 0;
-    let processing = false;
-    let followed_done = 0;
-    let followed_todo = 0;
-    let name_error;
-    const cur_version = 1;
+    let links_found = 0
+    let processing = false
+    let followed_done = 0
+    let followed_todo = 0
+    let name_error
+    let settings_shown = false
+    const cur_version = 1
 
     function clean_masto_address() {
         name_error = '';
@@ -97,6 +98,7 @@
         $myself = '';
         $top_links = '';
         $top_toots = '';
+        $settings = '';
     }
 
     function checkVersion() {
@@ -109,6 +111,8 @@
         if (!$active_tab) {
             $active_tab = 'top_links'
         }
+        if (!$settings || !validSettings())
+            resetSettings()
     }
 
     onMount(async () => {
@@ -116,7 +120,7 @@
     });
 
     function calculateTopLinks(links) {
-        let top = new Map();
+        let top = new Map()
         let link_data;
         links.forEach(l => {
             if (top.has(l.url)) {
@@ -150,35 +154,29 @@
                 link_data.image = l.image
             }
             top.set(l.url, link_data)
-        });
+        })
         return [...top].sort((a, b) => {
             return b[1].linkers.size - a[1].linkers.size
-        });
+        })
     }
 
     async function get_user_info() {
-        let url = $masto_instance + '/api/v1/accounts/verify_credentials';
-        let options = {'headers': {'Authorization': 'Bearer ' + $token}};
-        let resp = await fetch(url, options);
-        $myself = await resp.json();
+        let url = $masto_instance + '/api/v1/accounts/verify_credentials'
+        let options = {'headers': {'Authorization': 'Bearer ' + $token}}
+        let resp = await fetch(url, options)
+        $myself = await resp.json()
     }
 
     async function getFollowed() {
-        let url = $masto_instance + '/api/v1/accounts/' + $myself['id'] + '/following';
-        return getPaginated(url, $token);
-    }
-
-    async function getToots(user_id, not_before) {
-        let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses');
-        url.searchParams.set('limit', "100");
-        return await getPaginated(url, $token, not_before);
+        let url = $masto_instance + '/api/v1/accounts/' + $myself['id'] + '/following'
+        return getPaginated(url, $token)
     }
 
     async function getTootsPara(user_id, not_before) {
-        let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses');
-        url.searchParams.set('limit', "100");
-        let toots = await getPaginated(url, $token, not_before, true);
-        followed_done += 1;
+        let url = new URL($masto_instance + '/api/v1/accounts/' + user_id + '/statuses')
+        url.searchParams.set('limit', "100")
+        let toots = await getPaginated(url, $token, not_before, true)
+        followed_done += 1
         return toots
     }
 
@@ -194,11 +192,11 @@
     }
 
     function geometricMean(arr) {
-        let sum = 0;
+        let sum = 0
         for (let i = 0; i < arr.length; i++)
-            sum = sum + Math.log(arr[i]);
-        sum = sum / arr.length;
-        return Math.exp(sum);
+            sum = sum + Math.log(arr[i])
+        sum = sum / arr.length
+        return Math.exp(sum)
     }
 
     // function geometricMean2(arr) {
@@ -216,45 +214,46 @@
     }
 
     function tootScore(toot) {
-        let author_followers = toot.account.followers_count;
-        let reblogs = toot.reblogs_count
-        let favs = toot.favourites_count
-        let replies = toot.replies_count
-        let weight = author_followers > 0 ? 1 / Math.sqrt(20 + author_followers) : 0
+        let author_followers = toot.account.followers_count
+        let reblogs = toot.reblogs_count * $settings.reblogs_importance / 2
+        let favs = toot.favourites_count * $settings.favs_importance / 2
+        let replies = toot.replies_count * $settings.replies_importance / 2
+        let foll_weight = author_followers > 0 ? 1 / (Math.sqrt(20 + (author_followers * $settings.fol_importance / 2))) : 0
         let hours_by = (Date.now() - new Date(toot.created_at)) / 1000 / 60 / 60
-        let time_weight = hours_by > 0 ? 1 / (6 + hours_by) : 0
-        if (reblogs + favs + replies < 2)
-            return 0
+        let time_weight = hours_by > 0 ? 1 / ((6 + (hours_by * $settings.fresh_importance / 2))) : 0
+        // if (reblogs + favs + replies < 2)
+        //     return 0
         if (toot.favourited || toot.reblogged || toot.bookmarked)
             return 0
-        return time_weight * weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
+        return time_weight * foll_weight * geometricMean([reblogs + 1, favs + 1, replies + 1])
     }
 
     function update_top_toots(top_t, seen_t, t) {
         if (seen_t.has(t.id))
             return top_t
         seen_t.add(t.id)
-        let max_top_toots = 50
         let score = tootScore(t)
-        if (top_t.length < max_top_toots || top_t[top_t.length - 1].score < score) {
+        if (top_t.length < $settings.max_top_toots || top_t[top_t.length - 1].score < score) {
             top_t.push({toot: t, score: score})
             return top_t.sort((a, b) => {
                 return b.score - a.score
-            }).slice(0, max_top_toots)
+            }).slice(0, $settings.max_top_toots)
         } else {
             return top_t
         }
     }
 
-    async function processTimeLinePara() {
+    async function processTimeLine() {
+        if (!validSettings())
+            resetSettings()
         followed_done = 0;
         let followed = await getFollowed();
         let followed_info = buildFollowedInfo(followed);
         // console.log(followed);
         let d = new Date();
         let not_before = new Date();
-        not_before.setHours(not_before.getHours() - hours_back);
-        d.setHours(d.getHours() - hours_back);
+        not_before.setHours(not_before.getHours() - $settings.hours_back);
+        d.setHours(d.getHours() - $settings.hours_back);
         d.setUTCHours(0);
         d.setUTCMinutes(0);
         d.setUTCSeconds(0);
@@ -279,45 +278,6 @@
             })
             links_found = found_links.length;
         })
-        processing = false
-        $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info)
-        $top_toots = top_toots_wip
-    }
-
-    async function processTimeLine() {
-        followed_done = 0;
-        let followed = await getFollowed();
-        let followed_info = buildFollowedInfo(followed);
-        // console.log(followed);
-        let d = new Date();
-        let not_before = new Date();
-        not_before.setHours(not_before.getHours() - hours_back);
-        d.setHours(d.getHours() - hours_back);
-        d.setUTCHours(0);
-        d.setUTCMinutes(0);
-        d.setUTCSeconds(0);
-        d.setUTCMilliseconds(0);
-        let fresh_followed = followed.filter(f => {
-            let parsedDate = new Date();
-            parsedDate.setTime(Date.parse(f.last_status_at));
-            return parsedDate >= d;
-        }); /* ### */
-        followed_todo = fresh_followed.length;
-        let found_links = [];
-        let top_toots_wip = [];
-        let seen_toots = new Set();
-        processing = true;
-        for (let i = 0; i < fresh_followed.length; i++) {
-            let f = fresh_followed[i];
-            let toots = await getToots(f.id, not_before.toISOString());
-            console.log(`${f.acct} has ${toots.length} toots`);
-            toots.forEach(t => {
-                found_links = found_links.concat(extractLinks(t, $masto_instance))
-                top_toots_wip = update_top_toots(top_toots_wip, seen_toots, extractToot(t))
-            });
-            links_found = found_links.length;
-            followed_done = i + 1;
-        }
         processing = false
         $top_links = prepareLinks(calculateTopLinks(found_links).slice(0, 15), followed_info)
         $top_toots = top_toots_wip
@@ -365,18 +325,153 @@
         return prepared_links;
     }
 
+    function toggleSettings() {
+        console.log("Settings")
+        if (!validSettings())
+            resetSettings()
+        settings_shown = !settings_shown
+    }
+    let importance_map = {
+        0: 'ignored',
+        1: 'little importance',
+        2: 'normal importance',
+        3: 'more importance',
+        4: 'very important'
+    }
+    let adv_settings_shown = false
+
+    function toggleAdvSettings() {
+        adv_settings_shown = !adv_settings_shown
+    }
+
+    function resetSettings() {
+        $settings = {
+            hours_back: 24,
+            max_top_toots: 50,
+            max_top_links: 15,
+            replies_importance: 2,
+            favs_importance: 2,
+            reblogs_importance: 2,
+            fol_importance: 2,
+            fresh_importance: 2,
+        }
+    }
+
+    export function validSettings() {
+        if (!$settings)
+            return false
+        if ($settings.hours_back < 6 || $settings.hours_back > 48)
+            return false
+        if ($settings.max_top_links < 5 || $settings.max_top_links > 30)
+            return false
+        if ($settings.replies_importance < 0 || $settings.replies_importance > 4)
+            return false
+        if ($settings.favs_importance < 0 || $settings.favs_importance > 4)
+            return false
+        if ($settings.reblogs_importance < 0 || $settings.reblogs_importance > 4)
+            return false
+        if ($settings.fresh_importance < 0 || $settings.fresh_importance > 4)
+            return false
+        if ($settings.fol_importance < 0 || $settings.fol_importance > 4)
+            return false
+        if ($settings.max_top_toots < 10 || $settings.max_top_links > 150)
+            return false
+        return true
+    }
+
+
+
+
+
     checkVersion();
 </script>
 
 {#if $token}
-    <p class="grouped">
-        <button on:click={processTimeLinePara} class="button primary">Get/refresh data</button>
-        <button on:click={doLogout} class="button outline dark">Logout</button>
-    </p>
+    <nav class="nav">
+        <div class="nav-left">
+            <button on:click={processTimeLine} class="button primary">Get/refresh data</button>
+            <a href="?settings" on:click|preventDefault={toggleSettings} class="settings" title="Show/hide settings">
+                <i class="fa fa-cog" aria-label="Settings"></i></a>
+        </div>
+        <div class="nav-right">
+            <button on:click={doLogout} class="button outline dark">Logout</button>
+        </div>
+    </nav>
+    {#if settings_shown}
+        <div id="settings">
+            <fieldset>
+                <legend>General Settings</legend>
+                <p class="setting">
+                    How much of your timeline to analyze:<br/>
+                    <input class="range data_amount" type="range" min="6" max="48" step="6"
+                           bind:value={$settings.hours_back}> {$settings.hours_back} hrs
+                </p>
+            </fieldset>
+            <fieldset>
+                <legend>Top Links</legend>
+                <p class="setting">
+                    How many Top Links to show:<br/>
+                    <input class="range data_amount" type="range" min="5" max="30" step="5"
+                           bind:value={$settings.max_top_links}> {$settings.max_top_links} links
+                </p>
+            </fieldset>
+            <fieldset>
+                <legend>Top Toots</legend>
+                <p class="setting">
+                    How many Top Toots to show:<br/>
+                    <input class="range data_amount" type="range" min="10" max="150" step="10"
+                           bind:value={$settings.max_top_toots}> {$settings.max_top_toots} toots
+                </p>
+                <fieldset>
+                    <legend>Top Toots Ranking</legend>
+                    <p>If you want you can decide how much importance to give to toots features when ranking them. <a
+                            href="?adv_settings" on:click|preventDefault={toggleAdvSettings}>Show/hide ranking
+                        settings</a></p>
+                    {#if adv_settings_shown}
+                        <p class="setting">
+                            Favourites importance:<br/>
+                            <input class="range data_amount" type="range" min="0" max="4" step="1"
+                                   bind:value={$settings.favs_importance}> {importance_map[$settings.favs_importance]}
+                        </p>
+                        <p class="setting">
+                            Boosts importance:<br/>
+                            <input class="range data_amount" type="range" min="0" max="4" step="1"
+                                   bind:value={$settings.reblogs_importance}> {importance_map[$settings.reblogs_importance]}
+                        </p>
+                        <p class="setting">
+                            Replies importance:<br/>
+                            <input class="range data_amount" type="range" min="0" max="4" step="1"
+                                   bind:value={$settings.replies_importance}> {importance_map[$settings.replies_importance]}
+                        </p>
+                        <p class="setting">
+                            <span class="tooltip">Freshness importance:<span class="tooltiptext">Increase this importance to give recent toots a higher ranking</span></span><br/>
+                            <input class="range data_amount" type="range" min="0" max="4" step="1"
+                                   bind:value={$settings.fresh_importance}> {importance_map[$settings.fresh_importance]}
+                        </p>
+                        <p class="setting">
+                            <span class="tooltip">Followers importance:<span class="tooltiptext">Increase this importance to give toots from accounts with <em>less</em> followers a higher ranking</span></span><br/>
+                            <input class="range data_amount" type="range" min="0" max="4" step="1"
+                                   bind:value={$settings.fol_importance}> {importance_map[$settings.fol_importance]}
+                        </p>
+                    {/if}
+                </fieldset>
+            </fieldset>
+            <p>Settings will be applied at the next data refresh.</p>
+            <nav class="nav">
+                <div class="nav-left">
+                    <button class="button" on:click={toggleSettings}>Close</button>
+                </div>
+                <div class="nav-right">
+                    <button class="button outline dark" on:click={resetSettings}>Reset to Defaults</button>
+                </div>
+            </nav>
+        </div>
+    {/if}
     {#if processing}
         <p>
             <progress value={followed_done} max={followed_todo}>downloading...</progress>
-            Retrieving data...</p>
+            Retrieving data...
+        </p>
     {/if}
     <nav class="tabs is-full">
         <a class:active={$active_tab==='top_links'} href="?top_links"
@@ -393,7 +488,7 @@
     {/if}
 {:else}
     <p>Quintessence shows you the top links that the people that you follow on
-        Mastodon tooted or boosted in the last 24 hours.</p>
+        Mastodon tooted or boosted in the last hours and the most notable toots that appeared in your timeline.</p>
     <p>In order to work it just needs read permissions for your account.</p>
     <p>You can allow this by specifying your instance in the text box below and
         clicking "Authorize".</p>

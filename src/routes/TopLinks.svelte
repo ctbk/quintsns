@@ -62,7 +62,7 @@
         {/each}
     </ul>
 {:else}
-    <p>Pressing the "Get/Refresh" button above, you will collect the links tooted/boosted in the last 24 hours
+    <p>Pressing the "Get/Refresh" button above, you will collect the links tooted/boosted in the last hours
         by the people you follow on Mastodon.</p>
     <p>After the collection is completed, the links shared by the most people will be shown to you.</p>
 {/if}

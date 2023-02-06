@@ -192,6 +192,55 @@
             opacity: 100%;
         }
 
+        a.settings {
+            font-size:140%
+        }
+        p.setting {
+        }
+        #settings input.data_amount {
+            width: 10em;
+            display: inline;
+            vertical-align: middle;
+        }
+        fieldset {
+            border-radius: 4px;
+            border-color: var(--color-darkGrey)
+        }
+        fieldset legend {
+            text-transform: capitalize;
+            color: var(--color-darkGrey)
+        }
+        #settings input[type="range"]:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted var(--color-primary);
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 20em;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 6px;
+
+            position: absolute;
+            z-index: 1;
+            bottom: 100%;
+            margin-left: -10em;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
     </style>
 </head>
 <body data-sveltekit-preload-data="hover">

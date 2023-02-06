@@ -41,6 +41,6 @@
         {/each}
     </ul>
 {:else}
-    <p>After pressing the get/refresh button above, the "top" toots that appeared in your timeline in the last 24 hours will be shown here.
+    <p>After pressing the get/refresh button above, the "top" toots that appeared in your timeline in the last hours will be shown here.
 {/if}
 <p>Beware: the scoring criteria is still very experimental.</p>

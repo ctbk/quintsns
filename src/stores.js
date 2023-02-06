@@ -32,3 +32,4 @@ export const top_links = createLSStore('top_links');
 export const top_toots = createLSStore('top_toots');
 export const quint_version = createLSStore('quint_version');
 export const active_tab = createLSStore('active_tab');
+export const settings = createLSStore('settings');
